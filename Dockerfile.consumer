@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY s3_kafka_consumer_energi_db.py /app/
+COPY requirements.txt /app/
+
+RUN pip install --default-timeout=200 --no-cache-dir -r requirements.txt
+
+CMD ["python", "s3_kafka_consumer_energi_db.py"]

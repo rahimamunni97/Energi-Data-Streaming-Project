@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: energi-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: energi-consumer
+  template:
+    metadata:
+      labels:
+        app: energi-consumer
+    spec:
+      containers:
+        - name: energi-consumer
+          image: rahima9/energi-consumer:latest
+          imagePullPolicy: Always
+          env:
+            # Kafka connection (points to the Kafka service in your cluster)
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+
+            - name: KAFKA_TOPICS
+              value: "declaration_topic,elspot_topic"
+
+            # Postgres connection (points to energi-postgres service)
+            - name: POSTGRES_HOST
+              value: "energi-postgres"
+            - name: POSTGRES_DB
+              value: "energi_data"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"

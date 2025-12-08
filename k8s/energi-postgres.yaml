@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: energi-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: energi-postgres
+  template:
+    metadata:
+      labels:
+        app: energi-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: energi_data
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: energi-postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: energi-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
