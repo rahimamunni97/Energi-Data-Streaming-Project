@@ -15,21 +15,40 @@ spec:
       containers:
         - name: energi-consumer
           image: rahima9/energi-consumer:latest
-          imagePullPolicy: Always
+
+          # Environment variables
           env:
-            # Kafka connection (points to the Kafka service in your cluster)
+            - name: DB_HOST
+              value: "energi-postgres"  
+            - name: DB_PORT
+              value: "5432"
+
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: energi-postgres-secret
+                  key: POSTGRES_DB
+
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: energi-postgres-secret
+                  key: POSTGRES_USER
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: energi-postgres-secret
+                  key: POSTGRES_PASSWORD
+
+            # Kafka broker (this is same as in your teacher's cluster)
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka:9092"
+              value: "kafka:9092"   # or "kafka:9092" if different
 
-            - name: KAFKA_TOPICS
-              value: "declaration_topic,elspot_topic"
-
-            # Postgres connection (points to energi-postgres service)
-            - name: POSTGRES_HOST
-              value: "energi-postgres"
-            - name: POSTGRES_DB
-              value: "energi_data"
-            - name: POSTGRES_USER
-              value: "postgres"
-            - name: POSTGRES_PASSWORD
-              value: "postgres"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

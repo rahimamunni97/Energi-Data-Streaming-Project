@@ -2,4 +2,5 @@ kafka-python
 psycopg2-binary
 requests
 pandas
-=streamlit
+streamlit
+python-dotenv

@@ -1,11 +1,15 @@
-from kafka import KafkaProducer
 import json
+import os
 import requests
 import time
+from dotenv import load_dotenv
+from kafka import KafkaProducer
+
+load_dotenv()
 
 # Kafka config
 producer = KafkaProducer(
-    bootstrap_servers=['localhost:9092'],
+    bootstrap_servers=[os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")],
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 

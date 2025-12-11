@@ -52,9 +52,15 @@ Energi_project/
 
 ## 🚀 Step-by-Step Setup
 
-### 1️⃣ Start Docker Services
-Make sure **Docker Desktop** is running.  
-Then open a terminal in your project folder and run:
+### 1️⃣ Copy env and Install Python deps
+In `Energi_project`:
+```
+cp env.sample .env   # adjust if needed
+pip install -r requirements.txt
+```
+
+### 2️⃣ Start Docker Services
+Make sure **Docker Desktop** is running. Then run:
 
 ```bash
 docker-compose up -d
@@ -64,7 +70,7 @@ energi_zookeeper
 energi_kafka
 energi_postgres
 
-2️⃣ Create PostgreSQL Table
+3️⃣ Create PostgreSQL Table
 docker exec -it energi_postgres psql -U postgres -d energi_data
 
 Then inside PostgreSQL, run:
@@ -79,17 +85,17 @@ CREATE TABLE energi_records (
 );
 Exit with:
 \q
-3️⃣ Run Kafka Producer
+4️⃣ Run Kafka Producer
 This script gets data from the Energi API and sends it to Kafka.
 python s2_kafka_producer.py
-4️⃣ Run Kafka Consumer
+5️⃣ Run Kafka Consumer
 This script reads from Kafka and saves data to PostgreSQL.
 python s3_kafka_consumer.py
-5️⃣ Check Saved Data
+6️⃣ Check Saved Data
 
 Run this command to view what’s in the database:
 docker exec -it energi_postgres psql -U postgres -d energi_data -c "SELECT * FROM energi_records;"
-6️⃣ Launch Streamlit Dashboard
+7️⃣ Launch Streamlit Dashboard
 Finally, launch the Streamlit app:
 python -m streamlit run s4_streamlit_dashboard.py
 Then open in your browser:
@@ -102,3 +108,14 @@ A table of latest energy data
 A bar chart of CO₂ emissions by Price Area
 
 A “Refresh” button to update the view
+
+
+Docker Images Used:
+https://drive.google.com/file/d/1Rh22rGfutJMBvlq2GgeQBXjOyPHuqAdd/view?usp=drive_link
+
+---
+
+## 🔧 Environment variables (via `.env`)
+Copy `env.sample` to `.env` in the project root and adjust if needed. Defaults:
+- Kafka: `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`, `KAFKA_TOPICS=declaration_topic,elspot_topic`
+- Postgres: `DB_HOST=localhost`, `DB_PORT=55432`, `DB_NAME=energi_data`, `DB_USER=postgres`, `DB_PASSWORD=postgres`

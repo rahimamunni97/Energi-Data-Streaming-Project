@@ -1,56 +1,60 @@
-from kafka import KafkaConsumer
-import psycopg2
 import json
 import os
+from kafka import KafkaConsumer
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Read config from environment variables
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-KAFKA_TOPICS = os.getenv("KAFKA_TOPICS", "declaration_topic","elspot_topic")
+topics_env = os.getenv("KAFKA_TOPICS", "declaration_topic,elspot_topic")
+KAFKA_TOPICS = [t.strip() for t in topics_env.split(",")]
 
-POSTGRES_HOST = os.getenv("POSTGRES_HOST","localhost")
-POSTGRES_DB = os.getenv("POSTGRES_DB","energi_data")
-POSTGRES_USER = os.getenv("POSTGRES_USER","postgres")
-POSTGRES_PASSWORD= os.getenv("POSTGRES_PASSWORD","postgres")
+# Defaults match docker-compose and Streamlit dashboard
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "55432")
+DB_NAME = os.getenv("DB_NAME", "energi_data")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 
-#connect to PostgreSQL
+# Connect to PostgreSQL
 conn = psycopg2.connect(
-    host=POSTGRES_HOST,
-    database=POSTGRES_DB,
-    user=POSTGRES_USER,
-    password=POSTGRES_PASSWORD
+    host=DB_HOST,
+    port=DB_PORT,
+    database=DB_NAME,
+    user=DB_USER,
+    password=DB_PASSWORD
 )
 cur = conn.cursor()
 
 # Connect to Kafka
 consumer = KafkaConsumer(
     *KAFKA_TOPICS,
-    bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS.split(","),
     auto_offset_reset='earliest',
     enable_auto_commit=True,
-    valiue_deserializer=lambda x: json.loads(x.decode('utf=8'))
+    value_deserializer=lambda x: json.loads(x.decode('utf-8'))
 )
 
-print(f" Connected to Kafka at {KAFKA_BOOTSTRAP_SERVERS}")
-print(f" Connected to PostgreSQL at {POSTGRES_HOST}")
-print(" Listening for messages... (Press Ctrl+C to stop)\n")
-
+print(f"Connected to Kafka at {KAFKA_BOOTSTRAP_SERVERS}")
+print(f"Connected to PostgreSQL at {DB_HOST}")
+print("Listening for messages... (Press Ctrl+C to stop)\n")
 
 try:
     for message in consumer:
         topic = message.topic
         data = message.value
         
-        # Sample processing - example
         price_area = data.get("PriceArea", "N/A")
 
-        # Insert into PostgreSQL
         cur.execute("""
-            INSERT INTO energi_records (topic, price_area, playload)
+            INSERT INTO energi_records (topic, price_area, payload)
             VALUES (%s, %s, %s);
         """, (topic, price_area, json.dumps(data)))
-        
+
         conn.commit()
-        print(f" Inserted record from topic: {topic}, area: {price_area}")
+        print(f"Inserted record from topic: {topic}, area: {price_area}")
 
 except KeyboardInterrupt:
     print("\nStopped by user.")

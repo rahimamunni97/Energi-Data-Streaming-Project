@@ -1,15 +1,19 @@
+import os
+from dotenv import load_dotenv
 import streamlit as st
 import pandas as pd
 import psycopg2
 
+load_dotenv()
+
 # --- Database connection ---
 def get_data():
     conn = psycopg2.connect(
-        host="localhost",
-        port=55432,
-        database="energi_data",
-        user="postgres",
-        password="postgres"
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "55432"),
+        database=os.getenv("DB_NAME", "energi_data"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "postgres"),
     )
     query = "SELECT * FROM energi_records ORDER BY timestamp DESC LIMIT 50;"
     df = pd.read_sql(query, conn)
