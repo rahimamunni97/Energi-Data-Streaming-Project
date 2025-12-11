@@ -1,121 +1,149 @@
-# ⚡ Energi Data Streaming Project
+1. Project Overview
 
-This project shows how to collect and process **real-time Danish energy data** using:
-- **Kafka** for live streaming  
-- **PostgreSQL** for storage  
-- **Streamlit** for visualization  
+This project demonstrates an end-to-end data streaming pipeline using real-time Danish electricity market data from EnergiDataService. The system collects external API data, streams it through Kafka, stores it in a PostgreSQL database, and visualizes it using a Streamlit dashboard.
 
-You will stream data from [EnergiDataService.dk](https://www.energidataservice.dk/), store it in a database, and display it on a live dashboard.
+The implementation showcases a modern data engineering workflow, including message streaming, database integration, containerization with Docker, and interactive data presentation.
 
----
+2. System Architecture
 
-## 🧩 What You’ll Build
+The project follows the pipeline below:
 
-EnergiDataService API → Kafka → PostgreSQL → Streamlit Dashboard
+EnergiDataService API → Kafka Producer → Kafka Broker → Kafka Consumer → PostgreSQL Database → Streamlit Dashboard
 
 
-### 💡 Example Flow:
-1. **Producer (Python)** gets data from the Energi API  
-2. **Kafka** streams that data in real-time  
-3. **Consumer (Python)** receives the data and saves it in PostgreSQL  
-4. **Streamlit Dashboard** displays the latest data visually  
+Components
 
----
+Producer: Downloads data from EnergiDataService and sends it to Kafka topics.
 
-## ⚙️ Tools Used
+Kafka: Receives streaming messages.
 
-| Component | Purpose |
-|------------|----------|
-| **Python** | Main language for producer, consumer, and dashboard |
-| **Kafka** | Handles real-time data streaming |
-| **Zookeeper** | Required for Kafka to run |
-| **PostgreSQL** | Stores the energy data |
-| **Docker** | Runs Kafka, Zookeeper, and PostgreSQL easily |
-| **Streamlit** | Creates a simple live dashboard |
+Consumer: Listens to Kafka topics and inserts messages into a PostgreSQL table.
 
----
+PostgreSQL: Stores structured data.
 
-## 🏗️ Folder Structure
+Streamlit: Displays tables and visualizations based on stored records.
 
-Energi_project/
+### 3. Repository Structure
+
+```text
+Energi-Data-Streaming-Project/
 │
-├── docker-compose.yml # Starts Kafka, Zookeeper, PostgreSQL
-├── s1_test_apis.py # Tests EnergiDataService APIs
-├── s2_kafka_producer_energi.py # Sends API data to Kafka topics
-├── s3_kafka_consumer_energi.py # Reads data from Kafka and saves to PostgreSQL
-├── s4_streamlit_dashboard.py # Displays data on Streamlit dashboard
-├── create_table_energi.sql # SQL to create table in PostgreSQL
-└── README.md # Project guide
-
-
----
-
-## 🚀 Step-by-Step Setup
-
-### 1️⃣ Copy env and Install Python deps
-In `Energi_project`:
+├── docker-compose.yml              # Kafka, Zookeeper, PostgreSQL containers
+├── create_table.sql                # SQL script for database table
+│
+├── s1_test_apis.py                 # Test EnergiDataService API connectivity
+├── s2_kafka_producer.py            # Kafka Producer
+├── s3_kafka_consumer_energi_db.py  # Kafka Consumer → PostgreSQL
+├── s4_streamlit_dashboard.py       # Streamlit dashboard
+│
+├── requirements.txt                # Python dependencies
+├── Dockerfile.consumer             # Container for Kafka consumer (optional)
+└── k8s/                            # Kubernetes deployment files (optional)
 ```
-cp env.sample .env   # adjust if needed
+
+4. Installation and Setup
+4.1 Clone the Repository
+git clone https://github.com/rahimamunni97/Energi-Data-Streaming-Project.git
+cd Energi-Data-Streaming-Project
+
+4.2 Optional: Create a Python Virtual Environment
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate # macOS/Linux
+
+4.3 Install Dependencies
 pip install -r requirements.txt
-```
 
-### 2️⃣ Start Docker Services
-Make sure **Docker Desktop** is running. Then run:
+4.4 Create the .env Configuration File
 
-```bash
+In the project root, create a file named .env:
+
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+KAFKA_TOPICS=declaration_topic,elspot_topic
+
+DB_HOST=localhost
+DB_PORT=55432
+DB_NAME=energi_data
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+5. Running the Pipeline
+5.1 Start Kafka, Zookeeper, and PostgreSQL
 docker-compose up -d
 
-You should see 3 running containers:
-energi_zookeeper
-energi_kafka
-energi_postgres
+5.2 Create PostgreSQL Table
 
-3️⃣ Create PostgreSQL Table
+Enter the database container:
+
 docker exec -it energi_postgres psql -U postgres -d energi_data
 
-Then inside PostgreSQL, run:
-CREATE TABLE energi_records (
-    id SERIAL PRIMARY KEY,
-    source VARCHAR(50),
-    price_area VARCHAR(10),
-    production_type VARCHAR(50),
-    co2_per_kwh FLOAT,
-    production_mwh FLOAT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-Exit with:
+
+Run the SQL commands inside create_table.sql, then exit:
+
 \q
-4️⃣ Run Kafka Producer
-This script gets data from the Energi API and sends it to Kafka.
+
+5.3 Start the Kafka Consumer
+
+(Consumes records and writes to PostgreSQL)
+
+python s3_kafka_consumer_energi_db.py
+
+5.4 In a New Terminal, Run the Kafka Producer
+
+(Fetches API data and sends to Kafka topics)
+
 python s2_kafka_producer.py
-5️⃣ Run Kafka Consumer
-This script reads from Kafka and saves data to PostgreSQL.
-python s3_kafka_consumer.py
-6️⃣ Check Saved Data
 
-Run this command to view what’s in the database:
-docker exec -it energi_postgres psql -U postgres -d energi_data -c "SELECT * FROM energi_records;"
-7️⃣ Launch Streamlit Dashboard
-Finally, launch the Streamlit app:
+5.5 Verify Data Insertion
+docker exec -it energi_postgres \
+ psql -U postgres -d energi_data -c "SELECT * FROM energi_records LIMIT 5;"
+
+6. Running the Streamlit Dashboard
+
+To launch the visualization dashboard:
+
 python -m streamlit run s4_streamlit_dashboard.py
-Then open in your browser:
-👉 http://localhost:8501
-
-You’ll see:
-
-A table of latest energy data
-
-A bar chart of CO₂ emissions by Price Area
-
-A “Refresh” button to update the view
 
 
-Docker Images Used:
-https://drive.google.com/file/d/1Rh22rGfutJMBvlq2GgeQBXjOyPHuqAdd/view?usp=drive_link
+Open the local URL shown in the terminal (typically http://localhost:8501
+).
 
----
+7. Stopping the System
 
-## 🔧 Environment variables (via `.env`)
-Copy `env.sample` to `.env` in the project root and adjust if needed. Defaults:
-- Kafka: `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`, `KAFKA_TOPICS=declaration_topic,elspot_topic`
-- Postgres: `DB_HOST=localhost`, `DB_PORT=55432`, `DB_NAME=energi_data`, `DB_USER=postgres`, `DB_PASSWORD=postgres`
+Stop Streamlit, producer, and consumer using:
+
+Ctrl + C
+
+
+Stop all Docker containers:
+
+docker-compose down
+
+8. Notes and Recommendations
+
+Ensure Docker Desktop is running before executing the pipeline.
+
+The consumer must be active before running the producer to avoid losing messages.
+
+Data structure for EnergiDataService may change over time; update producers accordingly.
+
+Streamlit dashboard can be extended to include additional visualizations and filters.
+
+9. Future Extensions
+
+Optional improvements include:
+
+Deploying the full system on Kubernetes (manifests included in k8s/).
+
+Adding time-series forecasting models (e.g., ARIMA, Prophet).
+
+Enhancing the dashboard with multi-page navigation.
+
+Implementing weekly or daily automated ingestion schedules.
+
+10. Acknowledgements
+
+This project was developed as part of the Big-Data module.
+Datasets provided by EnergiDataService (https://energidataservice.dk/
+).
+Kafka, PostgreSQL, Docker, and Streamlit were used as core technologies.
