@@ -43,3 +43,16 @@ else:
     st.subheader("CO2 per kWh by Price Area")
     co2_summary = df.groupby("price_area")["co2_per_kwh"].mean().reset_index()
     st.bar_chart(co2_summary.set_index("price_area"))
+
+
+df = df.dropna()
+
+# Remove outliers (example: above 99th percentile)
+upper = df['SpotPriceEUR'].quantile(0.99)
+df = df[df['SpotPriceEUR'] < upper]
+
+# Convert timestamp
+df["HourUTC"] = pd.to_datetime(df["HourUTC"])
+
+# Create new column: Day
+df["Day"] = df["HourUTC"].dt.date

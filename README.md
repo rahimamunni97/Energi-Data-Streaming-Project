@@ -119,3 +119,23 @@ https://drive.google.com/file/d/1Rh22rGfutJMBvlq2GgeQBXjOyPHuqAdd/view?usp=drive
 Copy `env.sample` to `.env` in the project root and adjust if needed. Defaults:
 - Kafka: `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`, `KAFKA_TOPICS=declaration_topic,elspot_topic`
 - Postgres: `DB_HOST=localhost`, `DB_PORT=55432`, `DB_NAME=energi_data`, `DB_USER=postgres`, `DB_PASSWORD=postgres`
+
+
+## Data Cleaning and Validation
+
+To ensure data quality, the project applies several cleaning steps:
+
+### At Producer Level
+- Removal of empty or malformed records.
+- Conversion of timestamps to ISO format.
+- Validation of numeric fields (e.g., negative prices removed).
+- Normalisation of categorical fields such as PriceArea.
+
+### At Consumer Level
+- Schema validation before inserting messages into PostgreSQL.
+- Automatic skipping of invalid or corrupted messages.
+
+### At Dashboard Level
+- Dropping missing records.
+- Removing statistical outliers.
+- Aggregating data for clearer visual interpretation.
