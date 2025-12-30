@@ -18,9 +18,7 @@ DECLARATION_URL = "https://api.energidataservice.dk/dataset/DeclarationProductio
 ELSPOT_URL = "https://api.energidataservice.dk/dataset/Elspotprices"
 
 
-# ----------------------------
 # Data Cleaning Function
-# ----------------------------
 def clean_record(record):
     if not record:
         return None
@@ -49,18 +47,14 @@ def clean_record(record):
     return record
 
 
-# ----------------------------
 # Fetch Data
-# ----------------------------
 def fetch_data(url, limit=5):
     resp = requests.get(url, params={"limit": limit})
     data = resp.json()
     return data.get("records", [])
 
 
-# ----------------------------
 # Send to Kafka (CLEANED)
-# ----------------------------
 def send_to_kafka(topic, records):
     for record in records:
         fields = record.get("fields", record)
@@ -75,9 +69,7 @@ def send_to_kafka(topic, records):
             print("Skipped invalid record")
 
 
-# ----------------------------
 # Main Execution
-# ----------------------------
 if __name__ == "__main__":
     print("Fetching DeclarationProduction sample...")
     decl_data = fetch_data(DECLARATION_URL)

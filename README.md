@@ -124,3 +124,24 @@ https://drive.google.com/file/d/1Rh22rGfutJMBvlq2GgeQBXjOyPHuqAdd/view?usp=drive
 Copy `env.sample` to `.env` in the project root and adjust if needed. Defaults:
 - Kafka: `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`, `KAFKA_TOPICS=declaration_topic,elspot_topic`
 - Postgres: `DB_HOST=localhost`, `DB_PORT=55432`, `DB_NAME=energi_data`, `DB_USER=postgres`, `DB_PASSWORD=postgres`
+
+PostgreSQL
+docker exec -it energi_postgres psql -U postgres
+\c energi_data
+SELECT COUNT(*) FROM energi_records;
+
+SELECT COUNT(*) FROM energi_rejected;
+
+SELECT topic, reason, created_at
+FROM energi_rejected
+ORDER BY created_at DESC
+LIMIT 5;
+
+SELECT *
+FROM energi_ingest_metrics
+ORDER BY metric_time DESC
+LIMIT 5;
+
+SELECT COUNT(DISTINCT event_id), COUNT(*)
+FROM energi_records;
+

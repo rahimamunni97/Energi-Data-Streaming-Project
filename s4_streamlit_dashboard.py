@@ -6,7 +6,9 @@ import psycopg2
 
 load_dotenv()
 
-# --- Database connection ---
+# --------------------------------------------------
+# Database connection + query
+# --------------------------------------------------
 def get_data():
     conn = psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
@@ -15,44 +17,90 @@ def get_data():
         user=os.getenv("DB_USER", "postgres"),
         password=os.getenv("DB_PASSWORD", "postgres"),
     )
-    query = "SELECT * FROM energi_records ORDER BY timestamp DESC LIMIT 50;"
+
+    query = """
+    SELECT
+        r.timestamp,
+        r.price_area,
+        (r.payload->>'SpotPriceEUR')::float AS price,
+        q.quality_status,
+        q.reason
+    FROM energi_records r
+    JOIN energi_quality q ON r.event_id = q.event_id
+    ORDER BY r.timestamp DESC
+    """
+
     df = pd.read_sql(query, conn)
     conn.close()
     return df
 
-# --- Streamlit app ---
-st.set_page_config(page_title="Energi Dashboard", layout="wide")
-st.title("Real-Time Energi Data Dashboard")
 
-st.markdown("This dashboard shows the latest energy production and price area data coming from Kafka → PostgreSQL.")
+# --------------------------------------------------
+# Streamlit UI
+# --------------------------------------------------
+st.set_page_config(page_title="Energi Data Quality Dashboard", layout="wide")
 
-if st.button("Refresh Data"):
+st.title("Energi Data Quality Dashboard")
+
+st.markdown("""
+This dashboard shows **cleaned energy price data** together with a
+**data quality decision**.  
+Energy service companies can **choose which data to trust and use**.
+""")
+
+# Refresh button
+if st.button("🔄 Refresh data"):
     st.rerun()
 
 # Load data
 df = get_data()
 
 if df.empty:
-    st.warning("No data yet — make sure Kafka Producer & Consumer are running.")
-else:
-    # Show summary
-    st.subheader("Latest Records")
-    st.dataframe(df)
+    st.warning("No data available yet. Make sure Kafka producer & consumer are running.")
+    st.stop()
 
-    # Show grouped summary
-    st.subheader("CO2 per kWh by Price Area")
-    co2_summary = df.groupby("price_area")["co2_per_kwh"].mean().reset_index()
-    st.bar_chart(co2_summary.set_index("price_area"))
+# --------------------------------------------------
+# QUALITY FILTER (THIS IS WHAT YOU WANTED)
+# --------------------------------------------------
+st.subheader("✅ Select data usability")
 
+selected_quality = st.multiselect(
+    "Choose which data you want to include:",
+    options=["USABLE", "RISKY", "DENIED"],
+    default=["USABLE"]
+)
 
-df = df.dropna()
+filtered_df = df[df["quality_status"].isin(selected_quality)]
 
-# Remove outliers (example: above 99th percentile)
-upper = df['SpotPriceEUR'].quantile(0.99)
-df = df[df['SpotPriceEUR'] < upper]
+# --------------------------------------------------
+# EXPLANATION PANEL
+# --------------------------------------------------
+st.markdown("""
+### Quality meaning
+- 🟢 **USABLE** → Safe for reporting and analysis  
+- 🟡 **RISKY** → Passed validation but requires analyst review  
+- 🔴 **DENIED** → Should not be used (bad or unreliable data)
+""")
 
-# Convert timestamp
-df["HourUTC"] = pd.to_datetime(df["HourUTC"])
+# --------------------------------------------------
+# DATA TABLE
+# --------------------------------------------------
+st.subheader("📊 Cleaned data with quality decision")
 
-# Create new column: Day
-df["Day"] = df["HourUTC"].dt.date
+st.dataframe(
+    filtered_df,
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# SIMPLE SUMMARY COUNTS (VERY IMPRESSIVE)
+# --------------------------------------------------
+st.subheader("📈 Data quality summary")
+
+summary = (
+    df.groupby("quality_status")
+    .size()
+    .reset_index(name="record_count")
+)
+
+st.bar_chart(summary.set_index("quality_status"))
