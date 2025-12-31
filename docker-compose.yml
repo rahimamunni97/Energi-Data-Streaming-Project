@@ -27,18 +27,48 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  # Energi PostgreSQL database
   energi_postgres:
     image: postgres:16
     container_name: energi_postgres
     ports:
-      - "55432:5432"              # use a unique port to avoid clash
+      - "55432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: energi_data
     volumes:
       - energi_pgdata:/var/lib/postgresql/data
+
+  energi_consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: energi_consumer
+    depends_on:
+      - energi_kafka
+      - energi_postgres
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: energi_kafka:29092
+      DB_HOST: energi_postgres
+      DB_PORT: 5432
+      DB_NAME: energi_data
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      KAFKA_TOPICS: declaration_topic,elspot_topic
+    command: ["python", "s3_kafka_consumer_energi_db.py"]
+
+  energi_producer:
+    build:
+      context: .
+      dockerfile: Dockerfile.producer
+    container_name: energi_producer
+    depends_on:
+      - energi_kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: energi_kafka:29092
+    command: ["python", "s2_kafka_producer.py"]
+
+
 
 volumes:
   energi_pgdata:

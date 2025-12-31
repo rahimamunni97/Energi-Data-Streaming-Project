@@ -48,7 +48,7 @@ def clean_record(record):
 
 
 # Fetch Data
-def fetch_data(url, limit=5):
+def fetch_data(url, limit=10):
     resp = requests.get(url, params={"limit": limit})
     data = resp.json()
     return data.get("records", [])
