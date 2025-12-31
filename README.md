@@ -145,3 +145,7 @@ LIMIT 5;
 SELECT COUNT(DISTINCT event_id), COUNT(*)
 FROM energi_records;
 
+
+python s3_kafka_consumer_energi_db.py
+python s2_kafka_producer.py
+python -m streamlit run s4_streamlit_dashboard.py
