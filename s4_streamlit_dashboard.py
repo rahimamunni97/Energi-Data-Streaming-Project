@@ -11,12 +11,41 @@ import altair as alt
 load_dotenv()
 
 st.set_page_config(
-    page_title="EnergiFlow: Price–Production Analytics Platform",
+    page_title="EnergiFlow: Analysis of Electricity Price and Production Dynamics",
     layout="wide"
 )
 
-st.title("⚡ EnergiFlow: Price–Production Analytics Platform")
-st.caption("Separated streams → daily aggregation → decision support")
+# ---------- Minimal academic styling ----------
+st.markdown("""
+<style>
+h1 { font-weight: 700; }
+h2, h3 { font-weight: 600; }
+section[data-testid="stDataFrame"] {
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    padding: 6px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# --------------------------------------------------
+# TITLE & CONTEXT
+# --------------------------------------------------
+st.title("EnergiFlow: Analysis of Electricity Price and Production Dynamics")
+
+st.caption(
+    "A real-time streaming analytics prototype integrating electricity spot prices "
+    "and declared production data for exploratory decision-oriented analysis."
+)
+
+st.markdown("""
+### Project Context
+This dashboard presents the output of a real-time data streaming pipeline that
+integrates electricity spot prices (Elspot) with declared electricity production
+data. The objective is to explore how market prices and production volumes interact
+at regional level, and how such information may support operational monitoring and
+analytical decision-making.
+""")
 
 # --------------------------------------------------
 # DATABASE CONNECTION
@@ -31,7 +60,7 @@ def get_connection():
     )
 
 # --------------------------------------------------
-# LOAD RAW DATA
+# LOAD DATA
 # --------------------------------------------------
 @st.cache_data
 def load_elspot_data():
@@ -45,7 +74,7 @@ def load_elspot_data():
         FROM energi_records
         WHERE spot_price_eur IS NOT NULL
         ORDER BY timestamp DESC
-        LIMIT 10;
+        LIMIT 20;
     """, conn)
     conn.close()
     return df
@@ -64,7 +93,7 @@ def load_declaration_data():
         FROM energi_records
         WHERE production_mwh IS NOT NULL
         ORDER BY timestamp DESC
-        LIMIT 10;
+        LIMIT 50;
     """, conn)
     conn.close()
     return df
@@ -81,6 +110,7 @@ def load_daily_aggregated():
                 SUM(production_mwh) AS total_production
             FROM energi_records
             WHERE production_mwh IS NOT NULL
+              AND timestamp >= CURRENT_DATE - INTERVAL '2 months'
             GROUP BY date, area
         ),
         price AS (
@@ -90,6 +120,7 @@ def load_daily_aggregated():
                 AVG(spot_price_eur) AS avg_price
             FROM energi_records
             WHERE spot_price_eur IS NOT NULL
+              AND timestamp >= CURRENT_DATE - INTERVAL '2 months'
             GROUP BY date, area
         )
         SELECT
@@ -101,10 +132,11 @@ def load_daily_aggregated():
         JOIN price pr
           ON p.date = pr.date
          AND p.area = pr.area
-        ORDER BY p.date DESC;
+        ORDER BY p.date;
     """, conn)
     conn.close()
     return df
+
 
 # --------------------------------------------------
 # LOAD DATA
@@ -114,41 +146,71 @@ decl_df = load_declaration_data()
 daily_df = load_daily_aggregated()
 
 # --------------------------------------------------
-# RAW TABLES
+# RECENT PRICE DATA
 # --------------------------------------------------
-st.subheader("📋 Latest Elspot Price Records")
-st.dataframe(elspot_df.rename(columns={
-    "date": "Date",
-    "area": "Area",
-    "spot_price": "Spot Price (EUR)",
-    "source": "Source"
-}), width="stretch")
+st.subheader("Recent Electricity Spot Price Observations")
+st.markdown(
+    "The table below shows the most recent electricity spot price observations "
+    "ingested from the Elspot data stream."
+)
 
-st.subheader("📋 Latest Declaration Production Records")
-st.dataframe(decl_df.rename(columns={
-    "date": "Date",
-    "area": "Area",
-    "production_type": "Production Type",
-    "production_mwh": "Production (MWh)",
-    "source": "Source"
-}), width="stretch")
+st.dataframe(
+    elspot_df.rename(columns={
+        "date": "Date",
+        "area": "Area",
+        "spot_price": "Spot Price (EUR)",
+        "source": "Source"
+    }),
+    use_container_width=True
+)
 
 # --------------------------------------------------
-# DAILY AGGREGATED TABLE
+# RECENT PRODUCTION DATA (CLEANED)
 # --------------------------------------------------
-st.subheader("📊 Daily Price–Production Aggregation")
+st.subheader("Recent Declared Electricity Production Records")
+st.markdown(
+    "Declared electricity production values aggregated by production type and area."
+)
 
-st.dataframe(daily_df.rename(columns={
-    "date": "Date",
-    "area": "Area",
-    "total_production": "Total Production (MWh)",
-    "avg_price": "Avg Spot Price (EUR)"
-}), width="stretch")
+decl_clean = (
+    decl_df
+    .groupby(["date", "area", "production_type"], as_index=False)
+    .agg({"production_mwh": "sum"})
+)
+
+st.dataframe(
+    decl_clean.rename(columns={
+        "date": "Date",
+        "area": "Area",
+        "production_type": "Production Type",
+        "production_mwh": "Production (MWh)"
+    }),
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# DAILY AGGREGATION
+# --------------------------------------------------
+st.subheader("Daily Price–Production Aggregation")
+st.markdown(
+    "Daily aggregated values combining total declared production and "
+    "average spot prices for each bidding area."
+)
+
+st.dataframe(
+    daily_df.rename(columns={
+        "date": "Date",
+        "area": "Area",
+        "total_production": "Total Production (MWh)",
+        "avg_price": "Average Spot Price (EUR)"
+    }),
+    use_container_width=True
+)
 
 # --------------------------------------------------
 # TOTAL PRODUCTION SUMMARY
 # --------------------------------------------------
-st.subheader("📦 Total Production Summary (by Area)")
+st.subheader("Total Declared Production by Area")
 
 total_prod_df = (
     daily_df
@@ -157,12 +219,17 @@ total_prod_df = (
     .rename(columns={"total_production": "Total Production (MWh)"})
 )
 
-st.dataframe(total_prod_df, width="stretch")
+st.dataframe(total_prod_df, use_container_width=True)
 
 # --------------------------------------------------
-# DECISION SUPPORT TABLE
+# INTERPRETATION OF SIGNALS
 # --------------------------------------------------
-st.subheader("🧠 Decision Support Summary")
+st.subheader("Interpretation of Price–Production Signals")
+st.markdown(
+    "This section provides a qualitative interpretation of observed price "
+    "and production patterns. The interpretations are heuristic and intended "
+    "to support analytical reasoning rather than prescribe actions."
+)
 
 global_avg_price = daily_df["avg_price"].mean()
 global_avg_production = daily_df["total_production"].mean()
@@ -177,62 +244,158 @@ for _, row in total_prod_df.iterrows():
     avg_prod = area_df["total_production"].mean()
 
     if avg_price < global_avg_price and avg_prod > global_avg_production:
-        decision = "BUY"
-        reason = "Low price with strong production"
+        interpretation = "Favorable production conditions"
+        pattern = "Lower-than-average prices with relatively strong production"
     elif avg_price > global_avg_price and avg_prod < global_avg_production:
-        decision = "AVOID"
-        reason = "High price and weak production"
+        interpretation = "Unfavorable production conditions"
+        pattern = "Higher-than-average prices with weaker production"
     else:
-        decision = "MONITOR"
-        reason = "Mixed market signals"
+        interpretation = "Neutral / monitor"
+        pattern = "No clear dominance between price and production signals"
 
     decision_rows.append([
         area,
         round(avg_price, 2),
         round(avg_prod, 2),
-        decision,
-        reason
+        interpretation,
+        pattern
     ])
 
-decision_df = pd.DataFrame(decision_rows, columns=[
-    "Area",
-    "Avg Spot Price (EUR)",
-    "Avg Production (MWh)",
-    "Decision",
-    "Reason"
-])
+decision_df = pd.DataFrame(
+    decision_rows,
+    columns=[
+        "Area",
+        "Avg Spot Price (EUR)",
+        "Avg Production (MWh)",
+        "Market Interpretation",
+        "Observed Pattern"
+    ]
+)
 
-st.dataframe(decision_df, width="stretch")
+st.dataframe(decision_df, use_container_width=True)
 
 # --------------------------------------------------
-# PRICE vs PRODUCTION GRAPH
+# PRICE vs PRODUCTION VISUALIZATION
 # --------------------------------------------------
-st.subheader("📈 Price vs Production Comparison")
+st.subheader("Relationship Between Price and Production")
+
+st.markdown(
+    "The figure below illustrates the relationship between average daily spot prices "
+    "and total declared production for the selected bidding area."
+)
 
 selected_area = st.selectbox(
-    "Select Area for Graph",
+    "Select bidding area",
     sorted(daily_df["area"].unique())
 )
 
 graph_df = daily_df[daily_df["area"] == selected_area]
 
-chart_df = graph_df.melt(
-    id_vars="date",
-    value_vars=["total_production", "avg_price"],
-    var_name="Metric",
-    value_name="Value"
+if graph_df["date"].nunique() < 3:
+    st.info(
+        "The current visualization is based on a limited temporal range. "
+        "As additional daily data becomes available, trends and correlations "
+        "will become more apparent."
+    )
+
+min_date = daily_df["date"].min()
+max_date = daily_df["date"].max()
+
+st.caption(
+    f"Data shown for period: {min_date} to {max_date}"
 )
 
-chart = (
-    alt.Chart(chart_df)
-    .mark_line(point=True, strokeWidth=3)
-    .encode(
-        x=alt.X("date:T", title="Date"),
-        y=alt.Y("Value:Q"),
-        color=alt.Color("Metric:N", title="Metric"),
-        tooltip=["date:T", "Metric:N", "Value:Q"]
+# ---------------- Dual-axis visualization ----------------
+
+base = alt.Chart(graph_df).encode(
+    x=alt.X("date:T", title="Date")
+)
+
+if graph_df["date"].nunique() == 1:
+    # ---------- Single data point → use points ----------
+    price_layer = base.mark_point(
+        color="#4FA3FF",
+        size=120
+    ).encode(
+        y=alt.Y(
+            "avg_price:Q",
+            title="Average Spot Price (EUR)",
+            axis=alt.Axis(titleColor="#4FA3FF")
+        ),
+        tooltip=[
+            alt.Tooltip("date:T", title="Date"),
+            alt.Tooltip("avg_price:Q", title="Avg Price (EUR)", format=".2f")
+        ]
     )
-    .properties(height=420)
+
+    production_layer = base.mark_point(
+        color="#FFA726",
+        size=120
+    ).encode(
+        y=alt.Y(
+            "total_production:Q",
+            title="Total Production (MWh)",
+            axis=alt.Axis(titleColor="#FFA726")
+        ),
+        tooltip=[
+            alt.Tooltip("date:T", title="Date"),
+            alt.Tooltip("total_production:Q", title="Production (MWh)", format=".2f")
+        ]
+    )
+
+else:
+    # ---------- Multiple data points → use lines ----------
+    price_layer = base.mark_line(
+        color="#4FA3FF",
+        strokeWidth=3,
+        point=True
+    ).encode(
+        y=alt.Y(
+            "avg_price:Q",
+            title="Average Spot Price (EUR)",
+            axis=alt.Axis(titleColor="#4FA3FF")
+        ),
+        tooltip=[
+            alt.Tooltip("date:T", title="Date"),
+            alt.Tooltip("avg_price:Q", title="Avg Price (EUR)", format=".2f")
+        ]
+    )
+
+    production_layer = base.mark_line(
+        color="#FFA726",
+        strokeWidth=3,
+        point=True
+    ).encode(
+        y=alt.Y(
+            "total_production:Q",
+            title="Total Production (MWh)",
+            axis=alt.Axis(titleColor="#FFA726")
+        ),
+        tooltip=[
+            alt.Tooltip("date:T", title="Date"),
+            alt.Tooltip("total_production:Q", title="Production (MWh)", format=".2f")
+        ]
+    )
+
+chart = alt.layer(
+    price_layer,
+    production_layer
+).resolve_scale(
+    y="independent"
+).properties(
+    height=420
 )
 
 st.altair_chart(chart, use_container_width=True)
+
+# --------------------------------------------------
+# LIMITATIONS & FUTURE WORK
+# --------------------------------------------------
+st.subheader("Limitations and Future Work")
+st.markdown("""
+- The current analysis is based on daily aggregation and does not capture intra-day
+  price volatility.
+- Interpretation rules are heuristic and intended for exploratory analysis.
+- Future work may include longer historical windows, correlation analysis, and
+  predictive or forecasting models.
+""")
