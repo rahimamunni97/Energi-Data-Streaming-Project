@@ -42,6 +42,6 @@ def main():
     if elspot_records:
         print("First Elspotprices record:")
         print(elspot_records[0])
-        
+
 if __name__ == "__main__":
         main()
