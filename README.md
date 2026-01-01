@@ -1,151 +1,194 @@
-1. Project Overview
+# ⚡ EnergiFlow: Price–Production Analytics Platform
 
-This project demonstrates an end-to-end data streaming pipeline using real-time Danish electricity market data from EnergiDataService. The system collects external API data, streams it through Kafka, stores it in a PostgreSQL database, and visualizes it using a Streamlit dashboard.
+**EnergiFlow** is a real-time data streaming and analytics platform for electricity **price–production analysis**, built using modern **Big Data technologies**.  
+The system ingests live energy market data from public APIs, processes it via **Kafka**, stores it in **PostgreSQL**, and visualizes insights through an interactive **Streamlit dashboard**.
 
-The implementation showcases a modern data engineering workflow, including message streaming, database integration, containerization with Docker, and interactive data presentation.
-
-2. System Architecture
-
-The project follows the pipeline below:
-
-EnergiDataService API → Kafka Producer → Kafka Broker → Kafka Consumer → PostgreSQL Database → Streamlit Dashboard
-
-
-Components
-
-Producer: Downloads data from EnergiDataService and sends it to Kafka topics.
-
-Kafka: Receives streaming messages.
-
-Consumer: Listens to Kafka topics and inserts messages into a PostgreSQL table.
-
-PostgreSQL: Stores structured data.
-
-Streamlit: Displays tables and visualizations based on stored records.
-
-### 3. Repository Structure
-
-```text
-Energi-Data-Streaming-Project/
-│
-├── docker-compose.yml              # Kafka, Zookeeper, PostgreSQL containers
-├── create_table.sql                # SQL script for database table
-│
-├── s1_test_apis.py                 # Test EnergiDataService API connectivity
-├── s2_kafka_producer.py            # Kafka Producer
-├── s3_kafka_consumer_energi_db.py  # Kafka Consumer → PostgreSQL
-├── s4_streamlit_dashboard.py       # Streamlit dashboard
-│
-├── requirements.txt                # Python dependencies
-├── Dockerfile.consumer             # Container for Kafka consumer (optional)
-└── k8s/                            # Kubernetes deployment files (optional)
-```
-
-4. Installation and Setup
-4.1 Clone the Repository
-git clone https://github.com/rahimamunni97/Energi-Data-Streaming-Project.git
-cd Energi-Data-Streaming-Project
-
-4.2 Optional: Create a Python Virtual Environment
-python -m venv .venv
-.venv\Scripts\activate      # Windows
-# source .venv/bin/activate # macOS/Linux
-
-4.3 Install Dependencies
-pip install -r requirements.txt
-
-4.4 Create the .env Configuration File
-
-In the project root, create a file named .env:
-
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-KAFKA_TOPICS=declaration_topic,elspot_topic
-
-DB_HOST=localhost
-DB_PORT=55432
-DB_NAME=energi_data
-DB_USER=postgres
-DB_PASSWORD=postgres
-
-5. Running the Pipeline
-5.1 Start Kafka, Zookeeper, and PostgreSQL
-docker-compose up -d
-
-5.2 Create PostgreSQL Table
-
-Enter the database container:
-
-docker exec -it energi_postgres psql -U postgres -d energi_data
-
-
-Run the SQL commands inside create_table.sql, then exit:
-
-\q
-
-5.3 Start the Kafka Consumer
-
-(Consumes records and writes to PostgreSQL)
-
-python s3_kafka_consumer_energi_db.py
-
-5.4 In a New Terminal, Run the Kafka Producer
-
-(Fetches API data and sends to Kafka topics)
-
-python s2_kafka_producer.py
-
-5.5 Verify Data Insertion
-docker exec -it energi_postgres \
- psql -U postgres -d energi_data -c "SELECT * FROM energi_records LIMIT 5;"
-
-6. Running the Streamlit Dashboard
-
-To launch the visualization dashboard:
-
-python -m streamlit run s4_streamlit_dashboard.py
-Then open in your browser:
-👉 http://localhost:8501
-
-You’ll see:
-
-A table of latest energy data
-
-A bar chart of CO₂ emissions by Price Area
-
-A “Refresh” button to update the view
-
-
-Docker Images Used:
-https://drive.google.com/file/d/1Rh22rGfutJMBvlq2GgeQBXjOyPHuqAdd/view?usp=drive_link
+This project demonstrates an **end-to-end Big Data pipeline**, including streaming ingestion, data validation, aggregation, visualization, and decision support.
 
 ---
 
-## 🔧 Environment variables (via `.env`)
-Copy `env.sample` to `.env` in the project root and adjust if needed. Defaults:
-- Kafka: `KAFKA_BOOTSTRAP_SERVERS=localhost:9092`, `KAFKA_TOPICS=declaration_topic,elspot_topic`
-- Postgres: `DB_HOST=localhost`, `DB_PORT=55432`, `DB_NAME=energi_data`, `DB_USER=postgres`, `DB_PASSWORD=postgres`
+## 📌 Project Objectives
 
-PostgreSQL
-docker exec -it energi_postgres psql -U postgres
-\c energi_data
-SELECT COUNT(*) FROM energi_records;
+- Stream electricity **spot prices** and **production data** in real time  
+- Handle **multiple asynchronous Kafka data streams**  
+- Store validated records in a relational database  
+- Perform **daily aggregation and analytical joins**  
+- Visualize trends and support **data-driven decisions**  
+- Demonstrate real-world **Big Data system design**
 
-SELECT COUNT(*) FROM energi_rejected;
+---
 
-SELECT topic, reason, created_at
-FROM energi_rejected
-ORDER BY created_at DESC
-LIMIT 5;
+## 🏗️ System Architecture
 
-SELECT *
-FROM energi_ingest_metrics
-ORDER BY metric_time DESC
-LIMIT 5;
+```EnergiDataService APIs
+│
+▼
+Kafka Producer (Python)
+│
+▼
+Apache Kafka
+│
+▼
+Kafka Consumer (Python)
+│
+▼
+PostgreSQL (energi_records)
+│
+▼
+Streamlit Analytics Dashboard```
 
-SELECT COUNT(DISTINCT event_id), COUNT(*)
-FROM energi_records;
+
+---
+
+## 🔄 Data Sources
+
+The platform consumes data from the **Energi Data Service (Denmark)**.
+
+### 1️⃣ DeclarationProduction
+- Electricity production by source (wind, gas, biomass, etc.)
+- Metric: `Production (MWh)`
+- Kafka topic: `declaration_topic`
+
+### 2️⃣ ElspotPrices
+- Electricity spot market prices
+- Metric: `Spot Price (EUR)`
+- Kafka topic: `elspot_topic`
+
+⚠️ **Design Note**  
+Price and production arrive in **separate Kafka streams** and do **not exist in the same event**.  
+They are combined later using **daily aggregation and logical joins**.
+
+---
+
+## 🛠️ Technologies Used
+
+```| Layer | Technology |
+|-----|-----------|
+| Programming | Python 3 |
+| Streaming | Apache Kafka |
+| Messaging | kafka-python |
+| Database | PostgreSQL |
+| Containerization | Docker |
+| Visualization | Streamlit, Altair |
+| API Access | Requests |
+| Data Processing | Pandas |```
+
+---
+
+## 🗂️ Project Structure
+
+```Energi_project/
+│
+├── s1_test_apis.py # API connectivity test
+├── s2_kafka_producer.py # Kafka producer (price + production)
+├── s3_kafka_consumer_energi_db.py # Kafka consumer → PostgreSQL
+├── s4_streamlit_dashboard.py # Streamlit analytics dashboard
+│
+├── docker-compose.yml # Kafka, Zookeeper, PostgreSQL
+├── requirements.txt # Python dependencies
+├── .env # Environment variables
+└── README.md # Project documentation```
 
 
-python s3_kafka_consumer_energi_db.py
+---
+
+## 🧪 Data Storage Model
+
+All streaming data is stored in a single table:
+
+### `energi_records`
+
+| Column | Description |
+|------|------------|
+| `timestamp` | Event timestamp |
+| `price_area` | Market area (DK1, DK2, DE, etc.) |
+| `production_mwh` | Production amount (nullable) |
+| `spot_price_eur` | Spot price (nullable) |
+| `production_type` | Energy source |
+| `source` | Kafka topic origin |
+| `payload` | Raw JSON payload |
+
+📌 Nullable fields are **expected** due to asynchronous streams.
+
+---
+
+## 📊 Streamlit Dashboard Features
+
+### 1️⃣ Raw Data Tables
+- Latest **Elspot price records**
+- Latest **Declaration production records**
+
+### 2️⃣ Daily Aggregated Table
+- Daily **Total Production (MWh)**
+- Daily **Average Spot Price (EUR)**
+- Aggregated by **Date and Area**
+
+### 3️⃣ Total Production Summary
+- Cumulative production per area
+
+### 4️⃣ Decision Support Table
+
+| Decision | Logic |
+|--------|------|
+| BUY | Low price & high production |
+| AVOID | High price & low production |
+| MONITOR | Mixed market signals |
+
+### 5️⃣ Price vs Production Comparison Graph
+- Two **line charts** (price vs production)
+- Daily aggregated comparison
+- Interactive tooltips
+
+---
+
+## 🧠 Big Data Design Considerations
+
+- Proper handling of **asynchronous streams**
+- No incorrect row-level joins
+- Aggregation before analytics
+- Robust API error handling
+- Modular and scalable architecture
+
+---
+
+## ▶️ How to Run the Project
+
+### 1️⃣ Start Infrastructure
+```bash
+docker-compose up -d
+2️⃣ Start Kafka Producer
 python s2_kafka_producer.py
-python -m streamlit run s4_streamlit_dashboard.py
+
+3️⃣ Start Kafka Consumer
+python s3_kafka_consumer_energi_db.py
+
+4️⃣ Launch Streamlit Dashboard
+streamlit run s4_streamlit_dashboard.py
+
+🎓 Academic Relevance
+
+This project demonstrates core Big Data concepts:
+
+Streaming data ingestion
+
+Kafka producers and consumers
+
+Data validation and quality
+
+Real-time processing
+
+Aggregation and analytics
+
+Visualization and decision support
+
+🧾 Key Learning Outcomes
+
+Designing pipelines with non-overlapping streams
+
+Handling real-world API instability
+
+Separating ingestion from analytics
+
+Building explainable dashboards
+
+Translating raw streams into insights
