@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: energi-consumer
+  namespace: bd-bd-gr-07
 spec:
   replicas: 1
   selector:
@@ -15,11 +16,10 @@ spec:
       containers:
         - name: energi-consumer
           image: rahima9/energi-consumer:latest
-
-          # Environment variables
+          imagePullPolicy: Always
           env:
             - name: DB_HOST
-              value: "energi-postgres"  
+              value: "energi-postgres"
             - name: DB_PORT
               value: "5432"
 
@@ -41,9 +41,8 @@ spec:
                   name: energi-postgres-secret
                   key: POSTGRES_PASSWORD
 
-            # Kafka broker (this is same as in your teacher's cluster)
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka:9092"   # or "kafka:9092" if different
+              value: "kafka:9092"   # VERIFY service name
 
           resources:
             requests:
