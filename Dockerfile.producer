@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY s1_test_apis.py .
+COPY s2_kafka_producer.py .
+COPY validation.py .
+
+CMD ["python", "s2_kafka_producer.py"]
