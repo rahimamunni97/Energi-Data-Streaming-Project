@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: energi-producer-oneshot
+  namespace: bd-bd-gr-07
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: energi-producer
+          image: rahima9/energi-producer:latest
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
