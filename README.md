@@ -165,7 +165,7 @@ python s3_kafka_consumer_energi_db.py
 4️. Launch Streamlit Dashboard
 streamlit run s4_streamlit_dashboard.py
 
-Academic Relevance
+
 
 This project demonstrates core Big Data concepts:
 
