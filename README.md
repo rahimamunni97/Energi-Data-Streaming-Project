@@ -1,4 +1,4 @@
-# ⚡ EnergiFlow: Price–Production Analytics Platform
+# EnergiFlow: Price–Production Analytics Platform
 
 **EnergiFlow** is a real-time data streaming and analytics platform for electricity **price–production analysis**, built using modern **Big Data technologies**.  
 The system ingests live energy market data from public APIs, processes it via **Kafka**, stores it in **PostgreSQL**, and visualizes insights through an interactive **Streamlit dashboard**.
@@ -7,7 +7,7 @@ This project demonstrates an **end-to-end Big Data pipeline**, including streami
 
 ---
 
-## 📌 Project Objectives
+## Project Objectives
 
 - Stream electricity **spot prices** and **production data** in real time  
 - Handle **multiple asynchronous Kafka data streams**  
@@ -18,7 +18,7 @@ This project demonstrates an **end-to-end Big Data pipeline**, including streami
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```EnergiDataService APIs
 │
@@ -40,27 +40,27 @@ Streamlit Analytics Dashboard```
 
 ---
 
-## 🔄 Data Sources
+## Data Sources
 
 The platform consumes data from the **Energi Data Service (Denmark)**.
 
-### 1️⃣ DeclarationProduction
+### DeclarationProduction
 - Electricity production by source (wind, gas, biomass, etc.)
 - Metric: `Production (MWh)`
 - Kafka topic: `declaration_topic`
 
-### 2️⃣ ElspotPrices
+### ElspotPrices
 - Electricity spot market prices
 - Metric: `Spot Price (EUR)`
 - Kafka topic: `elspot_topic`
 
-⚠️ **Design Note**  
+**Design Note**  
 Price and production arrive in **separate Kafka streams** and do **not exist in the same event**.  
 They are combined later using **daily aggregation and logical joins**.
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 ```| Layer | Technology |
 |-----|-----------|
@@ -75,7 +75,7 @@ They are combined later using **daily aggregation and logical joins**.
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```Energi_project/
 │
@@ -92,7 +92,7 @@ They are combined later using **daily aggregation and logical joins**.
 
 ---
 
-## 🧪 Data Storage Model
+## Data Storage Model
 
 All streaming data is stored in a single table:
 
@@ -108,25 +108,25 @@ All streaming data is stored in a single table:
 | `source` | Kafka topic origin |
 | `payload` | Raw JSON payload |
 
-📌 Nullable fields are **expected** due to asynchronous streams.
+Nullable fields are **expected** due to asynchronous streams.
 
 ---
 
-## 📊 Streamlit Dashboard Features
+## Streamlit Dashboard Features
 
-### 1️⃣ Raw Data Tables
+### 1️. Raw Data Tables
 - Latest **Elspot price records**
 - Latest **Declaration production records**
 
-### 2️⃣ Daily Aggregated Table
+### 2️. Daily Aggregated Table
 - Daily **Total Production (MWh)**
 - Daily **Average Spot Price (EUR)**
 - Aggregated by **Date and Area**
 
-### 3️⃣ Total Production Summary
+### 3️. Total Production Summary
 - Cumulative production per area
 
-### 4️⃣ Decision Support Table
+### 4️. Decision Support Table
 
 | Decision | Logic |
 |--------|------|
@@ -134,14 +134,14 @@ All streaming data is stored in a single table:
 | AVOID | High price & low production |
 | MONITOR | Mixed market signals |
 
-### 5️⃣ Price vs Production Comparison Graph
+### 5️. Price vs Production Comparison Graph
 - Two **line charts** (price vs production)
 - Daily aggregated comparison
 - Interactive tooltips
 
 ---
 
-## 🧠 Big Data Design Considerations
+## Big Data Design Considerations
 
 - Proper handling of **asynchronous streams**
 - No incorrect row-level joins
@@ -151,21 +151,21 @@ All streaming data is stored in a single table:
 
 ---
 
-## ▶️ How to Run the Project
+## How to Run the Project
 
-### 1️⃣ Start Infrastructure
+### 1️. Start Infrastructure
 ```bash
 docker-compose up -d
-2️⃣ Start Kafka Producer
+2️. Start Kafka Producer
 python s2_kafka_producer.py
 
-3️⃣ Start Kafka Consumer
+3️. Start Kafka Consumer
 python s3_kafka_consumer_energi_db.py
 
-4️⃣ Launch Streamlit Dashboard
+4️. Launch Streamlit Dashboard
 streamlit run s4_streamlit_dashboard.py
 
-🎓 Academic Relevance
+Academic Relevance
 
 This project demonstrates core Big Data concepts:
 
@@ -181,7 +181,7 @@ Aggregation and analytics
 
 Visualization and decision support
 
-🧾 Key Learning Outcomes
+Key Learning Outcomes
 
 Designing pipelines with non-overlapping streams
 
