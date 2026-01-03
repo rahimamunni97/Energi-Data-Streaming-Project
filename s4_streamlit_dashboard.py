@@ -5,17 +5,23 @@ import pandas as pd
 import psycopg2
 import altair as alt
 
-# --------------------------------------------------
-# BASIC SETUP
-# --------------------------------------------------
+
+# BASIC SETUP AND CONFIGURATION
+"""Load environment variables for database connectivity.
+This allows the dashboard to run in different environments
+without modifying the source code."""
 load_dotenv()
 
+# Configure Streamlit page layout and metadata.
+# A wide layout is used to better accommodate tables and charts.
 st.set_page_config(
     page_title="EnergiFlow: Analysis of Electricity Price and Production Dynamics",
     layout="wide"
 )
 
-# ---------- Minimal academic styling ----------
+
+# styling 
+#Light styling is applied to improve readability.
 st.markdown("""
 <style>
 h1 { font-weight: 700; }
@@ -28,9 +34,8 @@ section[data-testid="stDataFrame"] {
 </style>
 """, unsafe_allow_html=True)
 
-# --------------------------------------------------
-# TITLE & CONTEXT
-# --------------------------------------------------
+
+# TITLE & CONTEXT 
 st.title("EnergiFlow: Analysis of Electricity Price and Production Dynamics")
 
 st.caption(
@@ -38,6 +43,7 @@ st.caption(
     "and declared production data for exploratory decision-oriented analysis."
 )
 
+# Provide short context so the dashboard can be understood on its own.
 st.markdown("""
 ### Project Context
 This dashboard presents the output of a real-time data streaming pipeline that
@@ -47,10 +53,15 @@ at regional level, and how such information may support operational monitoring a
 analytical decision-making.
 """)
 
-# --------------------------------------------------
 # DATABASE CONNECTION
-# --------------------------------------------------
+# A helper function is used to create database connections
 def get_connection():
+    """
+    Create a new database connection.
+
+    A helper function is used to keep connection handling
+    consistent across different queries.
+    """
     return psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", "55432"),
@@ -59,11 +70,16 @@ def get_connection():
         password=os.getenv("DB_PASSWORD", "postgres"),
     )
 
-# --------------------------------------------------
-# LOAD DATA
-# --------------------------------------------------
+
+# LOAD DATA FUNCTIONS
 @st.cache_data
 def load_elspot_data():
+    """
+    Load recent electricity spot price observations.
+
+    Only a limited number of rows are fetched to keep
+    the dashboard responsive during interactive use.
+    """
     conn = get_connection()
     df = pd.read_sql("""
         SELECT
@@ -82,6 +98,12 @@ def load_elspot_data():
 
 @st.cache_data
 def load_declaration_data():
+    """
+    Load recent declared electricity production records.
+
+    The data is later aggregated by production type
+    to provide a clearer overview.
+    """
     conn = get_connection()
     df = pd.read_sql("""
         SELECT
@@ -101,6 +123,12 @@ def load_declaration_data():
 
 @st.cache_data
 def load_daily_aggregated():
+    """
+    Compute daily aggregates for production and price.
+
+    This query joins production and price data on date
+    and area to enable comparative analysis.
+    """
     conn = get_connection()
     df = pd.read_sql("""
         WITH production AS (
@@ -138,16 +166,13 @@ def load_daily_aggregated():
     return df
 
 
-# --------------------------------------------------
-# LOAD DATA
-# --------------------------------------------------
+
+# LOAD DATA INTO MEMORY
 elspot_df = load_elspot_data()
 decl_df = load_declaration_data()
 daily_df = load_daily_aggregated()
 
-# --------------------------------------------------
 # RECENT PRICE DATA
-# --------------------------------------------------
 st.subheader("Recent Electricity Spot Price Observations")
 st.markdown(
     "The table below shows the most recent electricity spot price observations "
@@ -164,9 +189,8 @@ st.dataframe(
     use_container_width=True
 )
 
-# --------------------------------------------------
-# RECENT PRODUCTION DATA (CLEANED)
-# --------------------------------------------------
+
+# RECENT PRODUCTION DATA
 st.subheader("Recent Declared Electricity Production Records")
 st.markdown(
     "Declared electricity production values aggregated by production type and area."
@@ -188,9 +212,8 @@ st.dataframe(
     use_container_width=True
 )
 
-# --------------------------------------------------
+
 # DAILY AGGREGATION
-# --------------------------------------------------
 st.subheader("Daily Price–Production Aggregation")
 st.markdown(
     "Daily aggregated values combining total declared production and "
@@ -207,9 +230,8 @@ st.dataframe(
     use_container_width=True
 )
 
-# --------------------------------------------------
+
 # TOTAL PRODUCTION SUMMARY
-# --------------------------------------------------
 st.subheader("Total Declared Production by Area")
 
 total_prod_df = (
@@ -221,9 +243,8 @@ total_prod_df = (
 
 st.dataframe(total_prod_df, use_container_width=True)
 
-# --------------------------------------------------
+
 # INTERPRETATION OF SIGNALS
-# --------------------------------------------------
 st.subheader("Interpretation of Price–Production Signals")
 st.markdown(
     "This section provides a qualitative interpretation of observed price "
@@ -231,6 +252,7 @@ st.markdown(
     "to support analytical reasoning rather than prescribe actions."
 )
 
+# Compute global reference values for comparison
 global_avg_price = daily_df["avg_price"].mean()
 global_avg_production = daily_df["total_production"].mean()
 
@@ -274,9 +296,8 @@ decision_df = pd.DataFrame(
 
 st.dataframe(decision_df, use_container_width=True)
 
-# --------------------------------------------------
+# VISUAL ANALYSIS
 # PRICE vs PRODUCTION VISUALIZATION
-# --------------------------------------------------
 st.subheader("Relationship Between Price and Production")
 
 st.markdown(
@@ -291,6 +312,7 @@ selected_area = st.selectbox(
 
 graph_df = daily_df[daily_df["area"] == selected_area]
 
+# Handle short time ranges gracefully
 if graph_df["date"].nunique() < 3:
     st.info(
         "The current visualization is based on a limited temporal range. "
@@ -305,60 +327,39 @@ st.caption(
     f"Data shown for period: {min_date} to {max_date}"
 )
 
-# ---------------- Dual-axis visualization ----------------
 
+# Dual-axis visualization using Altair
 base = alt.Chart(graph_df).encode(
     x=alt.X("date:T", title="Date")
 )
 
+# Adjust visualization depending on number of data points
 if graph_df["date"].nunique() == 1:
-    # ---------- Single data point → use points ----------
+    # Single observation → use point markers
     price_layer = base.mark_point(
         color="#4FA3FF",
         size=120
     ).encode(
-        y=alt.Y(
-            "avg_price:Q",
-            title="Average Spot Price (EUR)",
-            axis=alt.Axis(titleColor="#4FA3FF")
-        ),
-        tooltip=[
-            alt.Tooltip("date:T", title="Date"),
-            alt.Tooltip("avg_price:Q", title="Avg Price (EUR)", format=".2f")
-        ]
+        y=alt.Y("avg_price:Q", title="Average Spot Price (EUR)"),
+        tooltip=["date:T", "avg_price:Q"]
     )
 
     production_layer = base.mark_point(
         color="#FFA726",
         size=120
     ).encode(
-        y=alt.Y(
-            "total_production:Q",
-            title="Total Production (MWh)",
-            axis=alt.Axis(titleColor="#FFA726")
-        ),
-        tooltip=[
-            alt.Tooltip("date:T", title="Date"),
-            alt.Tooltip("total_production:Q", title="Production (MWh)", format=".2f")
-        ]
+        y=alt.Y("total_production:Q", title="Total Production (MWh)"),
+        tooltip=["date:T", "total_production:Q"]
     )
-
 else:
-    # ---------- Multiple data points → use lines ----------
+    # Multiple observations → use line charts
     price_layer = base.mark_line(
         color="#4FA3FF",
         strokeWidth=3,
         point=True
     ).encode(
-        y=alt.Y(
-            "avg_price:Q",
-            title="Average Spot Price (EUR)",
-            axis=alt.Axis(titleColor="#4FA3FF")
-        ),
-        tooltip=[
-            alt.Tooltip("date:T", title="Date"),
-            alt.Tooltip("avg_price:Q", title="Avg Price (EUR)", format=".2f")
-        ]
+        y=alt.Y("avg_price:Q", title="Average Spot Price (EUR)"),
+        tooltip=["date:T", "avg_price:Q"]
     )
 
     production_layer = base.mark_line(
@@ -366,15 +367,8 @@ else:
         strokeWidth=3,
         point=True
     ).encode(
-        y=alt.Y(
-            "total_production:Q",
-            title="Total Production (MWh)",
-            axis=alt.Axis(titleColor="#FFA726")
-        ),
-        tooltip=[
-            alt.Tooltip("date:T", title="Date"),
-            alt.Tooltip("total_production:Q", title="Production (MWh)", format=".2f")
-        ]
+        y=alt.Y("total_production:Q", title="Total Production (MWh)"),
+        tooltip=["date:T", "total_production:Q"]
     )
 
 chart = alt.layer(
@@ -388,9 +382,8 @@ chart = alt.layer(
 
 st.altair_chart(chart, use_container_width=True)
 
-# --------------------------------------------------
+
 # LIMITATIONS & FUTURE WORK
-# --------------------------------------------------
 st.subheader("Limitations and Future Work")
 st.markdown("""
 - The current analysis is based on daily aggregation and does not capture intra-day
